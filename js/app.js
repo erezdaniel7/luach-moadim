@@ -148,8 +148,9 @@ function addEvent() {
 function getNextOccurrence(month, day) {
   const currentHeYear = new HeDate().getYear();
   for (let y = currentHeYear; y <= currentHeYear + 2; y++) {
-    if (month === 6 && !HeDate.IsLeapYear(y)) continue;
-    const hd = new HeDate(y, month, 1);
+    // Adar I in non-leap year → fall back to Adar (month 7)
+    const actualMonth = (month === 6 && !HeDate.IsLeapYear(y)) ? 7 : month;
+    const hd = new HeDate(y, actualMonth, 1);
     hd.setDate(Math.min(day, hd.getMonthLength()));
     const greg = hd.ConvertToGregorian();
     if (greg >= new Date()) return greg;
@@ -172,17 +173,18 @@ function renderEvents() {
 
   countEl.textContent = events.length;
 
+  // Remove only event items — never destroy the emptyState element
+  listEl.querySelectorAll('.event-item').forEach(el => el.remove());
+
   if (events.length === 0) {
     emptyState.style.display = 'flex';
+    if (!listEl.contains(emptyState)) listEl.appendChild(emptyState);
     listControls.style.display = 'none';
-    listEl.innerHTML = '';
-    listEl.appendChild(emptyState);
     return;
   }
 
   emptyState.style.display = 'none';
   listControls.style.display = 'flex';
-  listEl.innerHTML = '';
   events.forEach(ev => listEl.appendChild(createEventItem(ev)));
 }
 
@@ -216,7 +218,6 @@ function escapeHtml(text) {
 
 // ===== DELETE EVENT =====
 function deleteEvent(id) {
-  if (!confirm('האם למחוק את האירוע?')) return;
   events = events.filter(e => e.id !== id);
   saveEvents();
   renderEvents();
@@ -264,8 +265,7 @@ function countGeneratedEvents(selectedEvents, numYears) {
   const currentHeYear = new HeDate().getYear();
   selectedEvents.forEach(ev => {
     for (let y = 0; y < numYears; y++) {
-      if (ev.month === 6 && !HeDate.IsLeapYear(currentHeYear + y)) continue;
-      count++;
+      count++; // Adar I in non-leap years now falls back to Adar, never skipped
     }
   });
   return count;
@@ -290,10 +290,14 @@ function generateICSContent(selectedEvents, numYears) {
     for (let y = 0; y < numYears; y++) {
       const heYear = currentHeYear + y;
 
-      // Skip Adar A in non-leap years
-      if (ev.month === 6 && !HeDate.IsLeapYear(heYear)) continue;
+      // Adar I in non-leap year → fall back to Adar (month 7)
+      const isAdarFallback = ev.month === 6 && !HeDate.IsLeapYear(heYear);
+      const actualMonth = isAdarFallback ? 7 : ev.month;
+      const displayMonthName = (actualMonth === 7 && HeDate.IsLeapYear(heYear)) ? "אדר ב'" :
+                               (actualMonth === 7)                               ? 'אדר'    :
+                               monthName;
 
-      const hd = new HeDate(heYear, ev.month, 1);
+      const hd = new HeDate(heYear, actualMonth, 1);
       const monthLen   = hd.getMonthLength();
       const actualDay  = Math.min(ev.day, monthLen);
       const wasAdjusted = actualDay !== ev.day;
@@ -308,11 +312,14 @@ function generateICSContent(selectedEvents, numYears) {
 
       const dayHebrew  = HeDate.gimatria(actualDay);
       const yearHebrew = HeDate.gimatria(heYear);
-      let hebrewDateStr = `${dayHebrew} ${monthName} ${yearHebrew}`;
+      let hebrewDateStr = `${dayHebrew} ${displayMonthName} ${yearHebrew}`;
 
       let description = `תאריך עברי: ${hebrewDateStr}`;
+      if (isAdarFallback) {
+        description += ` (אדר א' – הוזז לאדר כי שנה זו אינה שנת עיבור)`;
+      }
       if (wasAdjusted) {
-        description += ` (הוזז מיום ${ev.day} כי החודש קצר יותר בשנה זו)`;
+        description += ` (הוזז מיום ${HeDate.gimatria(ev.day)} כי החודש קצר יותר בשנה זו)`;
       }
       description += `\n${GENERATED_BY}`;
 
@@ -379,9 +386,14 @@ function generateCSVContent(selectedEvents, numYears) {
     for (let y = 0; y < numYears; y++) {
       const heYear = currentHeYear + y;
 
-      if (ev.month === 6 && !HeDate.IsLeapYear(heYear)) continue;
+      // Adar I in non-leap year → fall back to Adar (month 7)
+      const isAdarFallback = ev.month === 6 && !HeDate.IsLeapYear(heYear);
+      const actualMonth = isAdarFallback ? 7 : ev.month;
+      const displayMonthName = (actualMonth === 7 && HeDate.IsLeapYear(heYear)) ? "אדר ב'" :
+                               (actualMonth === 7)                               ? 'אדר'    :
+                               monthName;
 
-      const hd = new HeDate(heYear, ev.month, 1);
+      const hd = new HeDate(heYear, actualMonth, 1);
       const monthLen  = hd.getMonthLength();
       const actualDay = Math.min(ev.day, monthLen);
 
@@ -390,9 +402,12 @@ function generateCSVContent(selectedEvents, numYears) {
 
       const dayHebrew  = HeDate.gimatria(actualDay);
       const yearHebrew = HeDate.gimatria(heYear);
-      const hebrewDateStr = `${dayHebrew} ${monthName} ${yearHebrew}`;
+      const hebrewDateStr = `${dayHebrew} ${displayMonthName} ${yearHebrew}`;
 
-      const description = `תאריך עברי: ${hebrewDateStr} | ${GENERATED_BY}`;
+      let note = '';
+      if (isAdarFallback) note = ' (אדר א\' – הוזז לאדר כי שנה זו אינה שנת עיבור)';
+
+      const description = `תאריך עברי: ${hebrewDateStr}${note} | ${GENERATED_BY}`;
 
       rows.push(
         csvEscape(ev.name) + ',' +
