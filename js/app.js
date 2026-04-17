@@ -69,6 +69,13 @@ function setupEventListeners() {
   document.querySelectorAll('input[name="date-input-mode"]').forEach(input => {
     input.addEventListener('change', updateInputModeUI);
   });
+  document.querySelectorAll('.mode-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const input = option.querySelector('input[name="date-input-mode"]');
+      if (input && !input.checked) input.checked = true;
+      updateInputModeUI();
+    });
+  });
   document.getElementById('event-gregorian-date').addEventListener('change', updateGregorianPreview);
   document.getElementById('after-sunset').addEventListener('change', updateGregorianPreview);
   document.getElementById('export-ics-btn').addEventListener('click', exportICS);
@@ -363,19 +370,8 @@ function exportICS() {
   const numYears = parseInt(document.getElementById('num-years').value) || 50;
   const content = generateICSContent(selectedEvents, numYears);
   downloadFile(content, 'luach-moadim.ics', 'text/calendar;charset=utf-8');
-  const total = countGeneratedEvents(selectedEvents, numYears);
+  const total = selectedEvents.length * numYears;
   showMessage('export-message', `✅ הקובץ נוצר! ${selectedEvents.length} אירועים × ${numYears} שנים = ${total} תאריכים`, 'success');
-}
-
-function countGeneratedEvents(selectedEvents, numYears) {
-  let count = 0;
-  const currentHeYear = new HeDate().getYear();
-  selectedEvents.forEach(ev => {
-    for (let y = 0; y < numYears; y++) {
-      count++; // Adar I in non-leap years now falls back to Adar, never skipped
-    }
-  });
-  return count;
 }
 
 function generateICSContent(selectedEvents, numYears) {

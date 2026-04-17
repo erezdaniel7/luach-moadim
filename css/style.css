@@ -344,12 +344,21 @@ input[type="text"]::placeholder {
 .mode-option {
   position: relative;
   cursor: pointer;
+  display: block;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mode-option input {
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
-  pointer-events: none;
+  cursor: pointer;
+  z-index: 2;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .mode-option span {
@@ -361,6 +370,8 @@ input[type="text"]::placeholder {
   text-align: center;
   font-weight: 600;
   transition: all .2s;
+  pointer-events: none;
+  user-select: none;
 }
 
 .mode-option input:checked+span {
