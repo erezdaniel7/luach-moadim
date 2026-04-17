@@ -7,19 +7,19 @@ const APP_NAME = 'לוח מועדים';
 const GENERATED_BY = 'נוצר ע"י ' + APP_NAME + ' | ' + APP_URL;
 
 const MONTHS_DATA = [
-  { num: 1,  name: 'תשרי',       maxDays: 30 },
-  { num: 2,  name: 'חשון',       maxDays: 30 }, // variable: 29 or 30
-  { num: 3,  name: 'כסלו',       maxDays: 30 }, // variable: 29 or 30
-  { num: 4,  name: 'טבת',        maxDays: 29 },
-  { num: 5,  name: 'שבט',        maxDays: 30 },
-  { num: 6,  name: "אדר א'",     maxDays: 30, leapOnly: true },
-  { num: 7,  name: 'אדר',        maxDays: 29 }, // Adar B in leap years
-  { num: 8,  name: 'ניסן',       maxDays: 30 },
-  { num: 9,  name: 'אייר',       maxDays: 29 },
-  { num: 10, name: 'סיון',       maxDays: 30 },
-  { num: 11, name: 'תמוז',       maxDays: 29 },
-  { num: 12, name: 'אב',         maxDays: 30 },
-  { num: 13, name: 'אלול',       maxDays: 29 }
+  { num: 1, name: 'תשרי', maxDays: 30 },
+  { num: 2, name: 'חשון', maxDays: 30 }, // variable: 29 or 30
+  { num: 3, name: 'כסלו', maxDays: 30 }, // variable: 29 or 30
+  { num: 4, name: 'טבת', maxDays: 29 },
+  { num: 5, name: 'שבט', maxDays: 30 },
+  { num: 6, name: "אדר א'", maxDays: 30, leapOnly: true },
+  { num: 7, name: 'אדר', maxDays: 29 }, // Adar B in leap years
+  { num: 8, name: 'ניסן', maxDays: 30 },
+  { num: 9, name: 'אייר', maxDays: 29 },
+  { num: 10, name: 'סיון', maxDays: 30 },
+  { num: 11, name: 'תמוז', maxDays: 29 },
+  { num: 12, name: 'אב', maxDays: 30 },
+  { num: 13, name: 'אלול', maxDays: 29 }
 ];
 
 function getMonthName(monthNum) {
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderEvents();
   updateYearsInfo();
   setupEventListeners();
+  updateInputModeUI();
   setupTabs();
 });
 
@@ -65,6 +66,11 @@ function setupEventListeners() {
   document.getElementById('event-name').addEventListener('keypress', e => {
     if (e.key === 'Enter') addEvent();
   });
+  document.querySelectorAll('input[name="date-input-mode"]').forEach(input => {
+    input.addEventListener('change', updateInputModeUI);
+  });
+  document.getElementById('event-gregorian-date').addEventListener('change', updateGregorianPreview);
+  document.getElementById('after-sunset').addEventListener('change', updateGregorianPreview);
   document.getElementById('export-ics-btn').addEventListener('click', exportICS);
   document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
   document.getElementById('select-all-btn').addEventListener('click', () => {
@@ -91,30 +97,119 @@ function updateDayOptions() {
   }
 }
 
+function getSelectedInputMode() {
+  const selected = document.querySelector('input[name="date-input-mode"]:checked');
+  return selected ? selected.value : 'hebrew';
+}
+
+function updateInputModeUI() {
+  const isHebrew = getSelectedInputMode() === 'hebrew';
+  document.getElementById('hebrew-date-fields').style.display = isHebrew ? 'block' : 'none';
+  document.getElementById('gregorian-date-fields').style.display = isHebrew ? 'none' : 'block';
+
+  if (isHebrew) {
+    const previewEl = document.getElementById('gregorian-conversion-preview');
+    previewEl.style.display = 'none';
+  } else {
+    updateGregorianPreview();
+  }
+}
+
+function convertGregorianToHebrew(dateValue, isAfterSunset) {
+  if (!dateValue) return null;
+
+  const [year, month, day] = dateValue.split('-').map(Number);
+  if (!year || !month || !day) return null;
+
+  const greg = new Date(year, month - 1, day, 12, 0, 0, 0);
+  if (Number.isNaN(greg.getTime())) return null;
+
+  if (isAfterSunset) {
+    greg.setDate(greg.getDate() + 1);
+  }
+
+  const hd = new HeDate(greg);
+  return {
+    year: hd.getYear(),
+    month: hd.getMonth(),
+    day: hd.getDate(),
+    monthName: hd.getMonthString()
+  };
+}
+
+function updateGregorianPreview() {
+  const previewEl = document.getElementById('gregorian-conversion-preview');
+  const gregorianInput = document.getElementById('event-gregorian-date');
+  const isAfterSunset = document.getElementById('after-sunset').checked;
+
+  if (!gregorianInput.value) {
+    previewEl.textContent = '';
+    previewEl.style.display = 'none';
+    return;
+  }
+
+  const converted = convertGregorianToHebrew(gregorianInput.value, isAfterSunset);
+  if (!converted) {
+    previewEl.textContent = '';
+    previewEl.style.display = 'none';
+    return;
+  }
+
+  previewEl.textContent = 'יומר לתאריך עברי: ' +
+    HeDate.gimatria(converted.day) + ' ' +
+    converted.monthName + ' ' +
+    HeDate.gimatria(converted.year);
+  previewEl.style.display = 'block';
+}
+
 // ===== ADD EVENT =====
 function addEvent() {
-  const nameInput  = document.getElementById('event-name');
+  const nameInput = document.getElementById('event-name');
   const monthSelect = document.getElementById('event-month');
-  const daySelect  = document.getElementById('event-day');
+  const daySelect = document.getElementById('event-day');
+  const gregorianInput = document.getElementById('event-gregorian-date');
+  const afterSunsetCheckbox = document.getElementById('after-sunset');
+  const previewEl = document.getElementById('gregorian-conversion-preview');
 
-  const name  = nameInput.value.trim();
-  const month = parseInt(monthSelect.value);
-  const day   = parseInt(daySelect.value);
+  const name = nameInput.value.trim();
+  const inputMode = getSelectedInputMode();
+  let month = parseInt(monthSelect.value);
+  let day = parseInt(daySelect.value);
+  let converted = null;
 
   if (!name) {
     showMessage('add-message', '⚠️ אנא הזן שם לאירוע', 'error');
     nameInput.focus();
     return;
   }
-  if (!month) {
-    showMessage('add-message', '⚠️ אנא בחר חודש', 'error');
-    monthSelect.focus();
-    return;
-  }
-  if (!day) {
-    showMessage('add-message', '⚠️ אנא בחר יום', 'error');
-    daySelect.focus();
-    return;
+
+  if (inputMode === 'gregorian') {
+    if (!gregorianInput.value) {
+      showMessage('add-message', '⚠️ אנא בחר תאריך לועזי מלא', 'error');
+      gregorianInput.focus();
+      return;
+    }
+
+    converted = convertGregorianToHebrew(gregorianInput.value, afterSunsetCheckbox.checked);
+    if (!converted) {
+      showMessage('add-message', '⚠️ לא ניתן להמיר את התאריך שנבחר', 'error');
+      gregorianInput.focus();
+      return;
+    }
+
+    month = converted.month;
+    day = converted.day;
+  } else {
+    if (!month) {
+      showMessage('add-message', '⚠️ אנא בחר חודש', 'error');
+      monthSelect.focus();
+      return;
+    }
+    if (!day) {
+      showMessage('add-message', '⚠️ אנא בחר יום', 'error');
+      daySelect.focus();
+      return;
+    }
   }
 
   const event = {
@@ -122,8 +217,15 @@ function addEvent() {
     name,
     month,
     day,
-    addedAt: new Date().toISOString()
+    addedAt: new Date().toISOString(),
+    sourceType: inputMode
   };
+
+  if (converted) {
+    event.originalGregorianDate = gregorianInput.value;
+    event.afterSunset = afterSunsetCheckbox.checked;
+    event.hebrewYearAtConversion = converted.year;
+  }
 
   events.push(event);
   saveEvents();
@@ -133,13 +235,18 @@ function addEvent() {
   nameInput.value = '';
   monthSelect.value = '';
   daySelect.innerHTML = '<option value="">-- בחר יום --</option>';
+  gregorianInput.value = '';
+  afterSunsetCheckbox.checked = false;
+  previewEl.textContent = '';
+  previewEl.style.display = 'none';
 
-  const nextDate  = getNextOccurrence(month, day);
-  const dateStr   = nextDate ? formatDisplayDate(nextDate) : '';
-  const monthName = getMonthName(month);
+  const nextDate = getNextOccurrence(month, day);
+  const dateStr = nextDate ? formatDisplayDate(nextDate) : '';
+  const monthName = converted ? converted.monthName : getMonthName(month);
   const dayHebrew = HeDate.gimatria(day);
 
   let msg = `✅ האירוע "${name}" נוסף! (${dayHebrew} ${monthName})`;
+  if (converted) msg += ` – הומר מתאריך לועזי`;
   if (dateStr) msg += ` – מתרחש בפעם הבאה ב‑${dateStr}`;
   showMessage('add-message', msg, 'success');
   nameInput.focus();
@@ -160,15 +267,15 @@ function getNextOccurrence(month, day) {
 
 function formatDisplayDate(date) {
   return date.getDate().toString().padStart(2, '0') + '/' +
-         (date.getMonth() + 1).toString().padStart(2, '0') + '/' +
-         date.getFullYear();
+    (date.getMonth() + 1).toString().padStart(2, '0') + '/' +
+    date.getFullYear();
 }
 
 // ===== RENDER EVENTS =====
 function renderEvents() {
-  const listEl       = document.getElementById('events-list');
-  const emptyState   = document.getElementById('empty-state');
-  const countEl      = document.getElementById('event-count');
+  const listEl = document.getElementById('events-list');
+  const emptyState = document.getElementById('empty-state');
+  const countEl = document.getElementById('event-count');
   const listControls = document.getElementById('list-controls');
 
   countEl.textContent = events.length;
@@ -225,10 +332,10 @@ function deleteEvent(id) {
 
 // ===== YEARS INFO =====
 function updateYearsInfo() {
-  const numYears     = parseInt(document.getElementById('num-years').value) || 50;
+  const numYears = parseInt(document.getElementById('num-years').value) || 50;
   const currentHeYear = new HeDate().getYear();
-  const endHebYear   = currentHeYear + numYears - 1;
-  const endGregYear  = new Date().getFullYear() + numYears;
+  const endHebYear = currentHeYear + numYears - 1;
+  const endGregYear = new Date().getFullYear() + numYears;
   document.getElementById('years-info').textContent =
     `יוצר אירועים משנת ${HeDate.gimatria(currentHeYear)} עד ${HeDate.gimatria(endHebYear)} (עד שנת ${endGregYear} לערך)`;
 }
@@ -254,7 +361,7 @@ function exportICS() {
     return;
   }
   const numYears = parseInt(document.getElementById('num-years').value) || 50;
-  const content  = generateICSContent(selectedEvents, numYears);
+  const content = generateICSContent(selectedEvents, numYears);
   downloadFile(content, 'luach-moadim.ics', 'text/calendar;charset=utf-8');
   const total = countGeneratedEvents(selectedEvents, numYears);
   showMessage('export-message', `✅ הקובץ נוצר! ${selectedEvents.length} אירועים × ${numYears} שנים = ${total} תאריכים`, 'success');
@@ -294,23 +401,23 @@ function generateICSContent(selectedEvents, numYears) {
       const isAdarFallback = ev.month === 6 && !HeDate.IsLeapYear(heYear);
       const actualMonth = isAdarFallback ? 7 : ev.month;
       const displayMonthName = (actualMonth === 7 && HeDate.IsLeapYear(heYear)) ? "אדר ב'" :
-                               (actualMonth === 7)                               ? 'אדר'    :
-                               monthName;
+        (actualMonth === 7) ? 'אדר' :
+          monthName;
 
       const hd = new HeDate(heYear, actualMonth, 1);
-      const monthLen   = hd.getMonthLength();
-      const actualDay  = Math.min(ev.day, monthLen);
+      const monthLen = hd.getMonthLength();
+      const actualDay = Math.min(ev.day, monthLen);
       const wasAdjusted = actualDay !== ev.day;
 
       hd.setDate(actualDay);
       const greg = hd.ConvertToGregorian();
 
-      const dateStr  = formatICSDate(greg);
-      const nextDay  = new Date(greg);
+      const dateStr = formatICSDate(greg);
+      const nextDay = new Date(greg);
       nextDay.setDate(nextDay.getDate() + 1);
       const nextDayStr = formatICSDate(nextDay);
 
-      const dayHebrew  = HeDate.gimatria(actualDay);
+      const dayHebrew = HeDate.gimatria(actualDay);
       const yearHebrew = HeDate.gimatria(heYear);
       let hebrewDateStr = `${dayHebrew} ${displayMonthName} ${yearHebrew}`;
 
@@ -371,7 +478,7 @@ function exportCSV() {
     return;
   }
   const numYears = parseInt(document.getElementById('num-years').value) || 50;
-  const content  = generateCSVContent(selectedEvents, numYears);
+  const content = generateCSVContent(selectedEvents, numYears);
   downloadFile(content, 'luach-moadim.csv', 'text/csv;charset=utf-8');
   showMessage('export-message', `✅ קובץ CSV נוצר! ניתן לייבא ב-Google Calendar`, 'success');
 }
@@ -390,17 +497,17 @@ function generateCSVContent(selectedEvents, numYears) {
       const isAdarFallback = ev.month === 6 && !HeDate.IsLeapYear(heYear);
       const actualMonth = isAdarFallback ? 7 : ev.month;
       const displayMonthName = (actualMonth === 7 && HeDate.IsLeapYear(heYear)) ? "אדר ב'" :
-                               (actualMonth === 7)                               ? 'אדר'    :
-                               monthName;
+        (actualMonth === 7) ? 'אדר' :
+          monthName;
 
       const hd = new HeDate(heYear, actualMonth, 1);
-      const monthLen  = hd.getMonthLength();
+      const monthLen = hd.getMonthLength();
       const actualDay = Math.min(ev.day, monthLen);
 
       hd.setDate(actualDay);
       const greg = hd.ConvertToGregorian();
 
-      const dayHebrew  = HeDate.gimatria(actualDay);
+      const dayHebrew = HeDate.gimatria(actualDay);
       const yearHebrew = HeDate.gimatria(heYear);
       const hebrewDateStr = `${dayHebrew} ${displayMonthName} ${yearHebrew}`;
 
@@ -435,8 +542,8 @@ function formatCSVDate(date) {
 // ===== DOWNLOAD FILE =====
 function downloadFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);

@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he-IL" dir="rtl">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Language" content="he-IL">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>לוח מועדים – אירועים יהודיים שנתיים ביומן שלך</title>
 
@@ -127,33 +128,72 @@
                maxlength="120" autocomplete="off">
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="event-month">חודש עברי</label>
-          <select id="event-month">
-            <option value="">-- בחר חודש --</option>
-            <option value="1">תשרי</option>
-            <option value="2">חשון</option>
-            <option value="3">כסלו</option>
-            <option value="4">טבת</option>
-            <option value="5">שבט</option>
-            <option value="6">אדר א׳ (שנת עיבור בלבד)</option>
-            <option value="7">אדר (אדר ב׳ בשנת עיבור)</option>
-            <option value="8">ניסן</option>
-            <option value="9">אייר</option>
-            <option value="10">סיון</option>
-            <option value="11">תמוז</option>
-            <option value="12">אב</option>
-            <option value="13">אלול</option>
-          </select>
+      <div class="form-group">
+        <label>סוג תאריך</label>
+        <div class="input-mode-switch" role="radiogroup" aria-label="סוג תאריך">
+          <label class="mode-option">
+            <input type="radio" name="date-input-mode" value="hebrew" checked>
+            <span>תאריך עברי</span>
+          </label>
+          <label class="mode-option">
+            <input type="radio" name="date-input-mode" value="gregorian">
+            <span>תאריך לועזי</span>
+          </label>
+        </div>
+      </div>
+
+      <div id="hebrew-date-fields" class="date-fields">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="event-month">חודש עברי</label>
+            <select id="event-month">
+              <option value="">-- בחר חודש --</option>
+              <option value="1">תשרי</option>
+              <option value="2">חשון</option>
+              <option value="3">כסלו</option>
+              <option value="4">טבת</option>
+              <option value="5">שבט</option>
+              <option value="6">אדר א׳ (שנת עיבור בלבד)</option>
+              <option value="7">אדר (אדר ב׳ בשנת עיבור)</option>
+              <option value="8">ניסן</option>
+              <option value="9">אייר</option>
+              <option value="10">סיון</option>
+              <option value="11">תמוז</option>
+              <option value="12">אב</option>
+              <option value="13">אלול</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="event-day">יום בחודש</label>
+            <select id="event-day">
+              <option value="">-- בחר יום --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="gregorian-date-fields" class="date-fields" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="event-gregorian-date">תאריך לועזי</label>
+            <input type="date" id="event-gregorian-date" lang="he-IL">
+          </div>
+
+          <div class="form-group form-group-inline">
+            <label>אפשרויות המרה</label>
+            <label class="checkbox-row" for="after-sunset">
+              <input type="checkbox" id="after-sunset">
+              <span>לאחר השקיעה</span>
+              <span class="info-tooltip" tabindex="0" aria-label="הסבר על לאחר השקיעה">
+                ⓘ
+                <span class="tooltip-text">בלוח העברי היום מתחיל בערב. אם האירוע התרחש אחרי השקיעה, סמן אפשרות זו כדי לשייך אותו לתאריך העברי של היום הבא.</span>
+              </span>
+            </label>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="event-day">יום בחודש</label>
-          <select id="event-day">
-            <option value="">-- בחר יום --</option>
-          </select>
-        </div>
+        <p id="gregorian-conversion-preview" class="conversion-preview" style="display:none;"></p>
       </div>
 
       <button class="btn btn-primary btn-large" id="add-event-btn">
